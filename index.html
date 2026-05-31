@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Caissa Coach Simulator</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:system-ui,sans-serif;background:#f5f4f0;color:#1a1a1a;min-height:100vh}
+
+.app{display:grid;grid-template-columns:260px 1fr;min-height:100vh;max-height:100vh;overflow:hidden}
+
+.sidebar{background:#fff;border-right:1px solid #e5e5e0;display:flex;flex-direction:column;overflow:hidden}
+.logo{padding:1.25rem;border-bottom:1px solid #e5e5e0}
+.logo-title{font-size:15px;font-weight:600;color:#1a1a1a}
+.logo-sub{font-size:11px;color:#888;margin-top:2px}
+.logo-icon{font-size:26px;margin-bottom:6px}
+
+.mode-selector{padding:12px;border-bottom:1px solid #e5e5e0}
+.mode-selector select{width:100%;font-size:12px;padding:6px 8px;border-radius:8px;border:1px solid #ddd;background:#fff}
+
+.category-list{flex:1;overflow-y:auto;padding:8px}
+.cat-item{padding:7px 8px;border-radius:8px;cursor:pointer;font-size:12px;color:#555;display:flex;align-items:center;gap:6px;transition:background 0.15s}
+.cat-item:hover{background:#f5f4f0}
+.cat-item.active{background:#f0effe;color:#534AB7;font-weight:500}
+.cat-badge{margin-left:auto;font-size:10px;background:#f0f0ee;padding:1px 6px;border-radius:99px;color:#888}
+.cat-item.active .cat-badge{background:#ddd9fc;color:#534AB7}
+
+.sidebar-footer{padding:12px;border-top:1px solid #e5e5e0;display:flex;flex-direction:column;gap:6px}
+.lb-btn{width:100%;padding:8px;border-radius:8px;border:1px solid #ddd;background:transparent;font-size:12px;cursor:pointer;color:#555;display:flex;align-items:center;gap:6px;transition:background 0.15s}
+.lb-btn:hover{background:#f5f4f0}
+
+.main{display:flex;flex-direction:column;overflow:hidden;height:100vh}
+
+.header{padding:1rem 1.25rem;border-bottom:1px solid #e5e5e0;background:#fff;display:flex;align-items:center;gap:12px;flex-shrink:0}
+.scenario-info{flex:1;min-width:0}
+.scenario-label{font-size:11px;color:#aaa;margin-bottom:2px}
+.scenario-title{font-size:14px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.difficulty-badge{font-size:10px;padding:2px 8px;border-radius:99px;font-weight:500}
+.diff-beginner{background:#EAF3DE;color:#3B6D11}
+.diff-intermediate{background:#FAEEDA;color:#854F0B}
+.diff-advanced{background:#FCEBEB;color:#A32D2D}
+
+.header-actions{display:flex;gap:8px;flex-shrink:0}
+.btn-sm{padding:5px 12px;border-radius:8px;border:1px solid #ddd;background:transparent;font-size:12px;cursor:pointer;color:#555;transition:background 0.15s;white-space:nowrap}
+.btn-sm:hover{background:#f5f4f0}
+.btn-primary{background:#1a1a1a;color:#fff;border-color:transparent}
+.btn-primary:hover{opacity:0.85;background:#1a1a1a}
+
+.screen{display:none;flex:1;overflow:hidden;flex-direction:column}
+.screen.active{display:flex}
+
+.welcome{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:2rem;text-align:center;overflow-y:auto}
+.welcome-chess{font-size:52px;margin-bottom:1rem}
+.welcome h2{font-size:20px;font-weight:600;margin-bottom:8px}
+.welcome p{font-size:14px;color:#666;max-width:400px;line-height:1.6;margin-bottom:1.5rem}
+.scenario-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;width:100%;max-width:480px;margin-bottom:1rem}
+.scenario-card{padding:12px;border-radius:8px;border:1px solid #e5e5e0;background:#fff;cursor:pointer;text-align:left;transition:border-color 0.15s}
+.scenario-card:hover{border-color:#aaa}
+.sc-cat{font-size:10px;color:#aaa;margin-bottom:4px}
+.sc-title{font-size:12px;font-weight:500;line-height:1.4}
+
+.chat-area{flex:1;overflow-y:auto;padding:1.25rem;display:flex;flex-direction:column;gap:12px}
+.msg{display:flex;gap:10px;max-width:82%}
+.msg.user{flex-direction:row-reverse;align-self:flex-end}
+.msg-avatar{width:32px;height:32px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600}
+.avatar-ai{background:#EEEDFE;color:#534AB7}
+.avatar-user{background:#E1F5EE;color:#0F6E56}
+.msg-content{padding:10px 14px;border-radius:12px;font-size:13px;line-height:1.6}
+.msg.ai .msg-content{background:#fff;border:1px solid #e5e5e0}
+.msg.user .msg-content{background:#f5f4f0;border:1px solid #e5e5e0}
+.msg-label{font-size:10px;color:#aaa;margin-bottom:4px}
+.msg.user .msg-label{text-align:right}
+.typing{display:flex;gap:4px;padding:4px 0;align-items:center}
+.typing span{width:6px;height:6px;border-radius:50%;background:#ccc;animation:bounce 1s infinite}
+.typing span:nth-child(2){animation-delay:0.15s}
+.typing span:nth-child(3){animation-delay:0.3s}
+@keyframes bounce{0%,60%,100%{transform:translateY(0)}30%{transform:translateY(-6px)}}
+
+.context-card{padding:10px 1.25rem;background:#fffdf5;border-bottom:1px solid #e5e5e0;flex-shrink:0}
+.ctx-row{display:flex;gap:16px;flex-wrap:wrap}
+.ctx-item{font-size:11px;color:#666}
+.ctx-label{color:#aaa;margin-right:4px}
+
+.input-area{padding:12px 1.25rem;border-top:1px solid #e5e5e0;background:#fff;flex-shrink:0}
+.input-wrap{display:flex;gap:8px;align-items:flex-end}
+.input-wrap textarea{flex:1;border:1px solid #ddd;border-radius:12px;padding:10px 14px;font-size:13px;resize:none;font-family:inherit;line-height:1.5;max-height:120px;min-height:40px;background:#fff;color:#1a1a1a}
+.input-wrap textarea:focus{outline:none;border-color:#aaa}
+.send-btn{width:36px;height:36px;border-radius:50%;background:#1a1a1a;border:none;color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:opacity 0.15s}
+.send-btn:hover{opacity:0.8}
+.send-btn:disabled{opacity:0.3;cursor:not-allowed}
+.input-hint{font-size:11px;color:#aaa;margin-top:6px}
+
+.scorecard{flex:1;overflow-y:auto;padding:1.25rem}
+.score-header{text-align:center;padding:1.5rem;margin-bottom:1rem}
+.score-title{font-size:18px;font-weight:600;margin-bottom:4px}
+.score-sub{font-size:13px;color:#666}
+.overall-score{font-size:52px;font-weight:600;margin:1rem 0}
+.score-grade{display:inline-block;padding:4px 14px;border-radius:99px;font-size:13px;font-weight:600;margin-bottom:1rem}
+.grade-A{background:#EAF3DE;color:#3B6D11}
+.grade-B{background:#E1F5EE;color:#0F6E56}
+.grade-C{background:#FAEEDA;color:#854F0B}
+.grade-D{background:#FCEBEB;color:#A32D2D}
+
+.metrics-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:1rem}
+.metric-card{background:#fff;border:1px solid #e5e5e0;border-radius:8px;padding:12px}
+.metric-name{font-size:11px;color:#666;margin-bottom:6px}
+.metric-bar-wrap{height:4px;background:#f0f0ee;border-radius:99px;margin-bottom:6px;overflow:hidden}
+.metric-bar{height:100%;border-radius:99px;transition:width 1s ease}
+.metric-score{font-size:20px;font-weight:600}
+.bar-high{background:#1D9E75}
+.bar-mid{background:#EF9F27}
+.bar-low{background:#E24B4A}
+
+.feedback-section{background:#fff;border:1px solid #e5e5e0;border-radius:12px;padding:1rem;margin-bottom:8px}
+.feedback-section h3{font-size:13px;font-weight:600;margin-bottom:8px;display:flex;align-items:center;gap:6px}
+.feedback-section p{font-size:13px;color:#555;line-height:1.6}
+.ideal-response{background:#f5f4f0;border-radius:8px;padding:10px;font-size:12px;color:#555;line-height:1.6;font-style:italic;border-left:3px solid #534AB7}
+
+.leaderboard{flex:1;overflow-y:auto;padding:1.25rem}
+.lb-table{width:100%;border-collapse:collapse}
+.lb-table th{font-size:11px;color:#aaa;text-align:left;padding:6px 8px;border-bottom:1px solid #e5e5e0;font-weight:400}
+.lb-table td{padding:10px 8px;border-bottom:1px solid #e5e5e0;font-size:13px;vertical-align:middle}
+.lb-rank{font-weight:600;color:#888;width:32px}
+.lb-name{font-weight:500}
+.lb-score{font-weight:600;text-align:right}
+.empty-lb{text-align:center;padding:3rem;color:#aaa;font-size:13px}
+
+.scenario-picker{flex:1;overflow-y:auto;padding:1.25rem}
+.sp-category{margin-bottom:1.25rem}
+.sp-cat-name{font-size:12px;font-weight:600;color:#555;margin-bottom:8px;padding-bottom:4px;border-bottom:1px solid #e5e5e0}
+.sp-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:8px}
+.sp-card{padding:10px 12px;border:1px solid #e5e5e0;border-radius:8px;cursor:pointer;transition:border-color 0.15s,background 0.15s;background:#fff}
+.sp-card:hover{border-color:#aaa;background:#fafaf8}
+.sp-num{font-size:10px;color:#aaa;margin-bottom:3px}
+.sp-title{font-size:12px;line-height:1.4;font-weight:500}
+.sp-diff{font-size:10px;margin-top:4px;display:inline-block;padding:1px 6px;border-radius:99px;font-weight:500}
+
+.name-input-wrap{display:flex;flex-direction:column;align-items:center;gap:12px;padding:1rem;text-align:center}
+.name-input-wrap input{padding:10px 14px;border:1px solid #ddd;border-radius:8px;font-size:14px;width:240px;text-align:center;font-family:inherit}
+.name-input-wrap input:focus{outline:none;border-color:#aaa}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="sidebar">
+    <div class="logo">
+      <div class="logo-icon">♟</div>
+      <div class="logo-title">Caissa Coach Simulator</div>
+      <div class="logo-sub">AI-Powered Training Platform</div>
+    </div>
+    <div class="mode-selector">
+      <select id="modeSelect">
+        <option value="beginner">🟢 Beginner Coach</option>
+        <option value="intermediate" selected>🟡 Intermediate Coach</option>
+        <option value="senior">🔴 Senior Coach</option>
+      </select>
+    </div>
+    <div class="category-list" id="catList"></div>
+    <div class="sidebar-footer">
+      <button class="lb-btn" onclick="showScreen('leaderboard')">🏆 Leaderboard</button>
+      <button class="lb-btn" onclick="showScreen('picker')">⊞ All 80 Scenarios</button>
+    </div>
+  </div>
+
+  <div class="main">
+    <div class="header" id="mainHeader">
+      <div class="scenario-info">
+        <div class="scenario-label" id="headerLabel">Caissa School of Chess</div>
+        <div class="scenario-title" id="headerTitle">Select a scenario to begin</div>
+      </div>
+      <div class="header-actions" id="headerActions">
+        <button class="btn-sm" onclick="showScreen('picker')">All Scenarios</button>
+      </div>
+    </div>
+
+    <div class="screen active" id="screen-welcome">
+      <div class="welcome">
+        <div class="welcome-chess">♟️</div>
+        <h2>Chess Coach Simulator</h2>
+        <p>Practice real coaching scenarios with an AI playing students and parents. Get scored on empathy, communication, teaching skill, and more.</p>
+        <div class="name-input-wrap" id="nameSetup">
+          <div style="font-size:13px;color:#666">Enter your name to track progress</div>
+          <input type="text" id="coachNameInput" placeholder="Your name..." maxlength="30" />
+          <button class="btn-sm btn-primary" onclick="setCoachName()">Start Training →</button>
+        </div>
+        <div class="scenario-grid" id="quickScenarios" style="display:none"></div>
+        <p style="font-size:12px;color:#aaa;display:none" id="welcomeOr">Or browse all 80 scenarios in the sidebar →</p>
+      </div>
+    </div>
+
+    <div class="screen" id="screen-chat">
+      <div class="context-card">
+        <div class="ctx-row" id="ctxRow"></div>
+      </div>
+      <div class="chat-area" id="chatArea"></div>
+      <div class="input-area">
+        <div class="input-wrap">
+          <textarea id="coachInput" placeholder="Type your response as the coach..." rows="1" onkeydown="handleKey(event)" oninput="autoResize(this)"></textarea>
+          <button class="send-btn" id="sendBtn" onclick="sendCoachMessage()">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M22 2L11 13"/><path d="M22 2L15 22 11 13 2 9l20-7z"/></svg>
+          </button>
+        </div>
+        <div class="input-hint" id="inputHint">Respond as a chess coach · Press Ctrl+Enter to send</div>
+      </div>
+    </div>
+
+    <div class="screen" id="screen-scorecard">
+      <div class="scorecard" id="scorecardContent"></div>
+    </div>
+
+    <div class="screen" id="screen-leaderboard">
+      <div class="leaderboard" id="lbContent"></div>
+    </div>
+
+    <div class="screen" id="screen-picker">
+      <div class="scenario-picker" id="pickerContent"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ─── DATA ───────────────────────────────────────────────────────────────────
+const SCENARIOS=[{id:1,cat:"Teaching Ability",title:"7-year-old doesn't understand what a fork is after three explanations",diff:"beginner",role:"student",persona:"A 7-year-old named Arjun who is confused and starting to get frustrated",obj:"Simplify teaching to age level"},{id:2,cat:"Teaching Ability",title:"Student keeps giving wrong answers but is trying sincerely",diff:"beginner",role:"student",persona:"An earnest 10-year-old who keeps getting tactics wrong but is visibly trying hard",obj:"Encourage while correcting"},{id:3,cat:"Teaching Ability",title:"Student memorized opening moves but doesn't understand them",diff:"intermediate",role:"student",persona:"A 12-year-old who can recite the Ruy Lopez but can't explain why",obj:"Build conceptual understanding"},{id:4,cat:"Teaching Ability",title:"Student asks: 'Why can't I just attack the king every move?'",diff:"beginner",role:"student",persona:"A curious 8-year-old who thinks aggression is the only strategy",obj:"Explain chess principles simply"},{id:5,cat:"Teaching Ability",title:"Mixed-level class: one 500-rated and one 1200-rated player",diff:"intermediate",role:"student",persona:"Two students with very different skill levels in the same session",obj:"Differentiated instruction"},{id:6,cat:"Teaching Ability",title:"Student asks a question the coach doesn't know",diff:"intermediate",role:"student",persona:"A sharp 14-year-old who asks about a specific endgame that stumps you",obj:"Model intellectual honesty"},{id:7,cat:"Teaching Ability",title:"Student solves every puzzle instantly and gets bored",diff:"intermediate",role:"student",persona:"A gifted 11-year-old who finishes everything in seconds and looks disengaged",obj:"Challenge and stretch the student"},{id:8,cat:"Teaching Ability",title:"Student refuses to think and just asks for answers",diff:"beginner",role:"student",persona:"A lazy but smart 10-year-old who always says 'just tell me the answer'",obj:"Develop independent thinking"},{id:9,cat:"Teaching Ability",title:"Student says: 'This is too difficult.'",diff:"beginner",role:"student",persona:"A 9-year-old who is overwhelmed and about to give up on a puzzle",obj:"Build resilience and scaffold"},{id:10,cat:"Teaching Ability",title:"Student says: 'This is too easy.'",diff:"beginner",role:"student",persona:"A confident 10-year-old who finds the material boring",obj:"Assess and calibrate level"},{id:11,cat:"Classroom Management",title:"Two students keep interrupting each other",diff:"beginner",role:"student",persona:"Two competitive 11-year-olds constantly talking over each other",obj:"Restore classroom order fairly"},{id:12,cat:"Classroom Management",title:"Student turns off camera and disappears",diff:"intermediate",role:"student",persona:"A 13-year-old who went camera-off and isn't responding",obj:"Re-engage without confrontation"},{id:13,cat:"Classroom Management",title:"Student starts playing another game during class",diff:"intermediate",role:"student",persona:"A bored 12-year-old who opened Minecraft mid-lesson",obj:"Redirect attention constructively"},{id:14,cat:"Classroom Management",title:"Three students answer every question before others get a chance",diff:"intermediate",role:"student",persona:"Three eager students dominating class participation",obj:"Inclusive participation"},{id:15,cat:"Classroom Management",title:"Nobody responds. Dead silent class.",diff:"intermediate",role:"student",persona:"A group of students who are completely silent after a question",obj:"Revive engagement"},{id:16,cat:"Classroom Management",title:"Student joins 15 minutes late",diff:"beginner",role:"student",persona:"A 10-year-old who joins late and disrupts flow asking what was missed",obj:"Handle disruption with grace"},{id:17,cat:"Classroom Management",title:"Internet issues causing disruption",diff:"beginner",role:"student",persona:"A student whose connection keeps dropping in and out",obj:"Adapt and keep class on track"},{id:18,cat:"Classroom Management",title:"Student repeatedly talks over the coach",diff:"intermediate",role:"student",persona:"An enthusiastic but domineering 13-year-old who interrupts constantly",obj:"Manage without discouraging enthusiasm"},{id:19,cat:"Classroom Management",title:"Younger sibling keeps disturbing the class",diff:"beginner",role:"student",persona:"A 9-year-old whose little sibling keeps running into frame",obj:"Handle delicately and empathetically"},{id:20,cat:"Classroom Management",title:"Student starts crying after making mistakes",diff:"beginner",role:"student",persona:"An emotional 8-year-old who bursts into tears after a blunder",obj:"Emotional support and de-escalation"},{id:21,cat:"Parent Communication",title:"Parent: 'My child attended 6 months — why no improvement?'",diff:"intermediate",role:"parent",persona:"A frustrated parent who expected more visible progress",obj:"Address concern professionally with data"},{id:22,cat:"Parent Communication",title:"Parent: 'Another academy promised faster results.'",diff:"intermediate",role:"parent",persona:"A skeptical parent comparing your academy to a competitor",obj:"Retain student, highlight value"},{id:23,cat:"Parent Communication",title:"Parent: 'Coach isn't giving enough attention.'",diff:"advanced",role:"parent",persona:"A concerned parent who feels their child is being overlooked",obj:"Handle complaint with empathy"},{id:24,cat:"Parent Communication",title:"Parent wants daily homework",diff:"intermediate",role:"parent",persona:"An ambitious parent pushing for daily assignments",obj:"Balance expectations with child wellbeing"},{id:25,cat:"Parent Communication",title:"Parent thinks homework is excessive",diff:"beginner",role:"parent",persona:"A protective parent who thinks chess homework is too much",obj:"Explain the value of practice"},{id:26,cat:"Parent Communication",title:"Parent demands rating guarantee",diff:"advanced",role:"parent",persona:"A demanding parent asking for a rating improvement guarantee",obj:"Set realistic expectations diplomatically"},{id:27,cat:"Parent Communication",title:"Parent compares child with another student",diff:"advanced",role:"parent",persona:"A parent saying 'Why is that other kid improving faster?'",obj:"Individual growth focus, handle sensitivity"},{id:28,cat:"Parent Communication",title:"Parent wants private coaching recommendations",diff:"intermediate",role:"parent",persona:"A parent asking if their child needs private tutoring beyond group classes",obj:"Assess need honestly"},{id:29,cat:"Parent Communication",title:"Parent says: 'We are thinking of discontinuing.'",diff:"advanced",role:"parent",persona:"A parent who is about to leave Caissa",obj:"Retention conversation"},{id:30,cat:"Parent Communication",title:"Parent leaves negative feedback online",diff:"advanced",role:"parent",persona:"A parent who left a 2-star review about coaching quality",obj:"Respond professionally and resolve"},{id:31,cat:"Student Psychology",title:"Student loses tournament and wants to quit chess",diff:"intermediate",role:"student",persona:"A devastated 12-year-old after a bad tournament result",obj:"Growth mindset and resilience"},{id:32,cat:"Student Psychology",title:"Student cries after blundering queen",diff:"beginner",role:"student",persona:"An 8-year-old who burst into tears after a major blunder in practice",obj:"Emotional regulation and reframing"},{id:33,cat:"Student Psychology",title:"Student says: 'I'm stupid.'",diff:"beginner",role:"student",persona:"A self-critical 10-year-old after repeated mistakes",obj:"Build self-esteem and normalize struggle"},{id:34,cat:"Student Psychology",title:"Student has persistent confidence issues",diff:"intermediate",role:"student",persona:"A talented 13-year-old who constantly doubts their ability",obj:"Build confidence through evidence"},{id:35,cat:"Student Psychology",title:"Student keeps blaming luck",diff:"intermediate",role:"student",persona:"A 12-year-old who says 'I was unlucky' after every loss",obj:"Accountability without shame"},{id:36,cat:"Student Psychology",title:"Student blames opponents for losses",diff:"intermediate",role:"student",persona:"A 14-year-old who says opponents always cheat or play weird moves",obj:"Develop sportsmanship"},{id:37,cat:"Student Psychology",title:"Student only cares about rating",diff:"intermediate",role:"student",persona:"A ratings-obsessed 13-year-old who refuses to play if it risks Elo",obj:"Redirect to learning over winning"},{id:38,cat:"Student Psychology",title:"Student is scared to play tournaments",diff:"beginner",role:"student",persona:"An anxious 11-year-old who avoids tournament sign-ups",obj:"Build confidence for competition"},{id:39,cat:"Student Psychology",title:"Student is obsessed with winning",diff:"intermediate",role:"student",persona:"A hyper-competitive 12-year-old who gets angry when losing",obj:"Healthy competition mindset"},{id:40,cat:"Student Psychology",title:"Student is burnt out",diff:"advanced",role:"student",persona:"A once-enthusiastic 15-year-old who now shows zero interest",obj:"Diagnose and address burnout"},{id:41,cat:"Tournament Guidance",title:"Preparing student for their first-ever tournament",diff:"beginner",role:"student",persona:"An excited but terrified 10-year-old about to play their first OTB",obj:"Practical and emotional prep"},{id:42,cat:"Tournament Guidance",title:"Student scored 0/5 in a tournament",diff:"intermediate",role:"student",persona:"A crushed 11-year-old after a terrible tournament result",obj:"Debrief constructively"},{id:43,cat:"Tournament Guidance",title:"Student scored 5/5 in a tournament",diff:"intermediate",role:"student",persona:"An elated 13-year-old who just had a perfect tournament",obj:"Celebrate and set next goals"},{id:44,cat:"Tournament Guidance",title:"Student faces a cheating accusation",diff:"advanced",role:"student",persona:"A shocked and upset 14-year-old accused of cheating by an opponent",obj:"Support and guide process"},{id:45,cat:"Tournament Guidance",title:"Student lost a winning position",diff:"intermediate",role:"student",persona:"A devastated 12-year-old who had mate in 3 and blundered it all",obj:"Post-game analysis without blame"},{id:46,cat:"Tournament Guidance",title:"Student won against a much stronger player",diff:"beginner",role:"student",persona:"An overjoyed 11-year-old who just beat a 1500-rated player",obj:"Channel excitement into learning"},{id:47,cat:"Tournament Guidance",title:"Parent asks whether a tournament is worth attending",diff:"intermediate",role:"parent",persona:"A practical parent asking about ROI of an expensive tournament trip",obj:"Guide decision with good criteria"},{id:48,cat:"Tournament Guidance",title:"Student nervous before a round",diff:"beginner",role:"student",persona:"A visibly anxious 10-year-old right before their game starts",obj:"Pre-game mental prep"},{id:49,cat:"Tournament Guidance",title:"Student tilted after a loss",diff:"intermediate",role:"student",persona:"An angry 13-year-old who is steaming after round 3 loss",obj:"Tilt management"},{id:50,cat:"Tournament Guidance",title:"Student wants opening advice before a game",diff:"intermediate",role:"student",persona:"A 12-year-old asking which opening to play 10 minutes before their round",obj:"Last-minute guidance"},{id:51,cat:"Difficult Conversations",title:"Coach forgot to follow up on an assignment",diff:"intermediate",role:"student",persona:"A diligent student who completed homework but coach forgot to review it",obj:"Accountability and recovery"},{id:52,cat:"Difficult Conversations",title:"Student says class is boring",diff:"intermediate",role:"student",persona:"A blunt 13-year-old who says 'these classes are so boring'",obj:"Self-reflection and adaptation"},{id:53,cat:"Difficult Conversations",title:"Parent says coach lacks energy",diff:"advanced",role:"parent",persona:"A parent who says 'the coach seems unmotivated lately'",obj:"Handle criticism professionally"},{id:54,cat:"Difficult Conversations",title:"Student wants to change coach",diff:"advanced",role:"student",persona:"A 14-year-old who says 'I want a different coach'",obj:"Handle with dignity and care"},{id:55,cat:"Difficult Conversations",title:"Parent asks: 'Why should we continue?'",diff:"advanced",role:"parent",persona:"A parent demanding justification for continuing enrollment",obj:"Articulate value clearly"},{id:56,cat:"Difficult Conversations",title:"Student never practices between sessions",diff:"intermediate",role:"student",persona:"A 12-year-old who admits they haven't practiced at all this week",obj:"Build practice habits"},{id:57,cat:"Difficult Conversations",title:"Parent expects impossible progress in 1 month",diff:"advanced",role:"parent",persona:"A parent expecting their child to be rated 1500 after 4 weeks",obj:"Reset expectations kindly"},{id:58,cat:"Difficult Conversations",title:"Student is consistently absent",diff:"intermediate",role:"student",persona:"A student who has missed 4 of the last 6 classes",obj:"Address absenteeism with care"},{id:59,cat:"Difficult Conversations",title:"Student never speaks in class",diff:"intermediate",role:"student",persona:"An extremely shy 11-year-old who hasn't said a single word in 3 weeks",obj:"Gently encourage participation"},{id:60,cat:"Difficult Conversations",title:"Student dominates every class discussion",diff:"intermediate",role:"student",persona:"A very verbal 13-year-old who monopolizes every conversation",obj:"Inclusive management"},{id:61,cat:"CSOC Scenarios",title:"Student never completes Caissa platform assignments",diff:"intermediate",role:"student",persona:"A student who ignores all Caissa platform tasks between classes",obj:"Explain platform value"},{id:62,cat:"CSOC Scenarios",title:"Student ignores League activities",diff:"beginner",role:"student",persona:"A student who doesn't participate in Caissa League games",obj:"Drive engagement with platform features"},{id:63,cat:"CSOC Scenarios",title:"Student complains about the leaderboard",diff:"beginner",role:"student",persona:"A student upset that they're low on the Caissa leaderboard",obj:"Reframe leaderboard as motivation"},{id:64,cat:"CSOC Scenarios",title:"Student wants extra rewards for doing tasks",diff:"beginner",role:"student",persona:"A transactional student who wants points or prizes for every task",obj:"Intrinsic vs extrinsic motivation"},{id:65,cat:"CSOC Scenarios",title:"Parent doesn't understand Caissa platform features",diff:"beginner",role:"parent",persona:"A confused parent who doesn't know how to use the Caissa app",obj:"Guide and reassure"},{id:66,cat:"CSOC Scenarios",title:"Student's rating doesn't match class level",diff:"intermediate",role:"student",persona:"A student whose online rating is 900 but placed in a 1200+ group",obj:"Manage expectations and placement"},{id:67,cat:"CSOC Scenarios",title:"Parent asks why platform assignments matter",diff:"intermediate",role:"parent",persona:"A skeptical parent questioning the value of online chess puzzles",obj:"Communicate pedagogical value"},{id:68,cat:"CSOC Scenarios",title:"Student doesn't participate in community events",diff:"intermediate",role:"student",persona:"A student who skips all Caissa community tournaments and events",obj:"Build community belonging"},{id:69,cat:"CSOC Scenarios",title:"Student is inactive despite attending",diff:"advanced",role:"student",persona:"A student who attends every class but seems completely disengaged",obj:"Diagnose root cause"},{id:70,cat:"CSOC Scenarios",title:"Parent says: 'We only come for classes, not platform activities'",diff:"intermediate",role:"parent",persona:"A parent dismissing the platform component of learning",obj:"Sell holistic approach"},{id:71,cat:"Advanced Coaching",title:"Student asks about future chess career",diff:"advanced",role:"student",persona:"An ambitious 16-year-old asking if they can become a professional",obj:"Honest guidance with support"},{id:72,cat:"Advanced Coaching",title:"Student wants a FIDE title roadmap",diff:"advanced",role:"student",persona:"A serious 15-year-old asking how to get the FM title",obj:"Create realistic development plan"},{id:73,cat:"Advanced Coaching",title:"Gifted child progressing unusually fast",diff:"advanced",role:"student",persona:"An 8-year-old who is already performing at 1400 level",obj:"Nurture without burning out"},{id:74,cat:"Advanced Coaching",title:"Teenager losing interest in chess",diff:"advanced",role:"student",persona:"A formerly passionate 16-year-old who is drifting away from chess",obj:"Reignite passion or support transition"},{id:75,cat:"Advanced Coaching",title:"Student watches YouTube and contradicts the coach",diff:"advanced",role:"student",persona:"A 14-year-old who quotes YouTube GMs to argue with your teaching",obj:"Handle with intellectual humility"},{id:76,cat:"Advanced Coaching",title:"Student only wants to learn openings",diff:"intermediate",role:"student",persona:"A 13-year-old who refuses anything other than opening theory",obj:"Balanced curriculum persuasion"},{id:77,cat:"Advanced Coaching",title:"Student only wants to do tactics",diff:"intermediate",role:"student",persona:"A tactics-obsessed 12-year-old who hates endgames and strategy",obj:"Explain complete chess"},{id:78,cat:"Advanced Coaching",title:"Student refuses to study endgames",diff:"intermediate",role:"student",persona:"A 13-year-old who says endgames are boring and pointless",obj:"Sell endgame importance"},{id:79,cat:"Advanced Coaching",title:"Student constantly switches openings every week",diff:"intermediate",role:"student",persona:"A restless 14-year-old who plays a different opening every game",obj:"Commit to repertoire"},{id:80,cat:"Advanced Coaching",title:"Student asks: 'Why should I study this?'",diff:"intermediate",role:"student",persona:"A 12-year-old questioning the relevance of what's being taught",obj:"Justify and motivate"}];
+
+const CATEGORIES=[...new Set(SCENARIOS.map(s=>s.cat))];
+const CAT_ICONS={"Teaching Ability":"📚","Classroom Management":"🏫","Parent Communication":"💬","Student Psychology":"🧠","Tournament Guidance":"🏆","Difficult Conversations":"⚠️","CSOC Scenarios":"♟","Advanced Coaching":"⭐"};
+const OPENERS={1:"Uhh... I still don't get what a fork is. You explained it like three times already and I'm so confused 😕",2:"I tried really hard but I got it wrong again... am I just bad at this?",3:"I know the moves! e4 e5 Nf3 Nc6 Bb5... but like, why do we do all that?",4:"Coach, can't I just move my queen next to the king every turn? That's how you win right?",5:"[500-rated]: Wait what's a pin again? [1200-rated]: Oh come on it's so obvious!",6:"What's the exact drawing technique in King and Rook Pawn vs King when the pawn is on the a-file and the defending king is in front?",7:"Done! That was easy. Can I have harder ones? These are too simple for me.",8:"Just tell me the answer. I don't want to think about it.",9:"Coach I can't do this... it's way too hard. I give up.",10:"This is so easy. My little brother could solve this.",11:"No I was going to say that! [other]: No YOU always talk! Let ME answer!",12:"[Camera off. No response for 2 minutes.]",13:"[Screen sharing shows Minecraft open in background]",14:"Oh I know! [answers before others] Oh and also! I have another one—",15:"[Complete silence. 10 seconds pass after the coach asks a question.]",16:"Hi sorry I'm late! What did I miss? Can you start from the beginning?",17:"Coach? Are you there? Your voice keeps cutting out and I can only see half your screen.",18:"Actually coach, I think you're wrong about that. Because Magnus always— sorry, can I say something?",19:"[Younger sibling runs in] STOP IT! Go away! I'm in class! Sorry coach he keeps coming in.",20:"[Student starts crying] I hate chess... I always make the worst mistakes...",21:"My child has been coming for six months and I still don't see improvement. When will they start winning?",22:"Another academy told me they can get my child to 1000 rating in 3 months. Why can't you do that?",23:"I've been noticing that the coach barely speaks to my child during class. Others seem to get more time.",24:"I want my child to have homework every single day. Chess needs to be practiced daily.",25:"The homework you're giving is too much. My child has school, homework, and now chess exercises too?",26:"Can you guarantee my child will reach 1200 rating by year end? That's why we enrolled.",27:"Why is Priya improving so much faster than my son? They joined at the same time.",28:"Do you think my child needs private one-on-one coaching? Is the group class enough?",29:"Honestly we've been thinking of stopping. It's expensive and I'm not sure it's worth it.",30:"I left a review online. I think the teaching quality has gone down and parents should know.",31:"I'm done with chess. I lost every game. I practiced so much and it didn't matter. I quit.",32:"[Sobbing] I had a queen and I just... I just moved it there and now it's gone...",33:"I'm so stupid. Everyone else gets it and I don't. I'm just dumb.",34:"I don't want to play in the tournament. I'll probably just lose anyway.",35:"I would have won but I got so unlucky. My opponent always gets lucky positions.",36:"He was just playing random moves to confuse me. It's not fair.",37:"I don't want to play practice games. What if I lose rating? Can we just do puzzles instead?",38:"I don't want to go to the tournament. What if I lose? Everyone will see me lose.",39:"I HATE losing. I don't care about learning, I just want to WIN.",40:"I don't really feel like doing chess today. Or any day lately honestly.",41:"Coach I'm so nervous! What if I forget everything? What if I lose all my games?",42:"I scored zero out of five. Zero. I got crushed by everyone. What's the point?",43:"I WON ALL MY GAMES! 5/5! I'm amazing at chess!",44:"The arbiter said I was cheating but I WASN'T! I don't even have my phone! This is so unfair!",45:"I had mate in three and I just... I blundered everything. How does that even happen?",46:"I beat a 1500! I'm basically a grandmaster now right?!",47:"Is this tournament really worth going to? It's expensive and a full weekend away.",48:"[Visibly shaking] Coach... I'm really scared. My hands won't stop shaking.",49:"I can't play another round. That loss was RIGGED. I'm not going back in there.",50:"Coach which opening should I play? My game starts in 10 minutes!",51:"Coach, I finished all the homework you assigned last week but you didn't review any of it today.",52:"Honestly? These classes have been pretty boring lately. We keep doing the same things.",53:"I wanted to speak to you because my child says the coach doesn't seem very enthusiastic lately.",54:"I want to switch to a different coach. No offense but I feel like I'm not learning much.",55:"We've been here 4 months. Give me one good reason why we should continue.",56:"Yeah I didn't really practice this week. Or last week actually.",57:"My child joined one month ago. Why aren't they rated 1500 yet?",58:"I know I've missed a lot of classes. Things have been busy.",59:"[Student has not spoken a single word for 3 weeks. Just nods occasionally.]",60:"Also I think— oh and by the way— sorry but can I also add—",61:"I keep forgetting to do the Caissa assignments. Does it really matter if I do them?",62:"I don't play in the League games. What's the point of those anyway?",63:"The leaderboard is unfair. Some kids just have more time to do puzzles than me.",64:"If I complete all my assignments this week, do I get extra points or a prize?",65:"I don't understand this Caissa app at all. Where do I find my child's assignments?",66:"My son is rated 900 but you put him in the 1200 group. I think there's a mistake.",67:"Why does my child need to do puzzles on an app? Isn't that what the classes are for?",68:"My child never participates in community events or tournaments. Is that a problem?",69:"[Student attends every class but just sits there and doesn't engage with anything]",70:"We enrolled for the classes only. We're not really interested in the platform activities.",71:"Coach, do you think I can become a professional chess player? Like, for real?",72:"I want to get the FM title. What's my roadmap? How long will it take?",73:"I want harder material. The current content is too easy for me.",74:"I don't know... I used to love chess but now it just feels like a chore.",75:"Actually on YouTube, GM Hikaru said you should never play this way. So I think you might be wrong.",76:"Can we ONLY do openings today? Endgames and tactics are boring.",77:"Why do we need endgames? I just want to do more tactics. Those are actually fun.",78:"Endgames are so boring. Games never reach that stage anyway.",79:"I want to switch openings again. I'm bored of the Caro-Kann. Let me try the Sicilian Dragon.",80:"Coach, why do I need to study this? When will I ever use zugzwang in a real game?"};
+
+// ─── STATE ──────────────────────────────────────────────────────────────────
+let currentScreen='welcome',currentScenario=null,messages=[],coachName='',leaderboard=[],turnCount=0,maxTurns=3,isLoading=false;
+
+// ─── INIT ────────────────────────────────────────────────────────────────────
+function init(){renderSidebar();renderPicker();renderQuickScenarios();loadLeaderboard();}
+
+function renderSidebar(){
+  const el=document.getElementById('catList');
+  el.innerHTML='';
+  CATEGORIES.forEach(cat=>{
+    const count=SCENARIOS.filter(s=>s.cat===cat).length;
+    const div=document.createElement('div');
+    div.className='cat-item';
+    div.innerHTML=`${CAT_ICONS[cat]||'♟'} ${cat}<span class="cat-badge">${count}</span>`;
+    div.onclick=()=>{document.querySelectorAll('.cat-item').forEach(d=>d.classList.remove('active'));div.classList.add('active');showScreen('picker');};
+    el.appendChild(div);
+  });
+}
+
+function renderQuickScenarios(){
+  const qg=document.getElementById('quickScenarios');
+  [1,21,31,41].forEach(id=>{
+    const s=SCENARIOS.find(x=>x.id===id);
+    const d=document.createElement('div');
+    d.className='scenario-card';
+    d.innerHTML=`<div class="sc-cat">${s.cat}</div><div class="sc-title">Scenario ${s.id}: ${s.title}</div>`;
+    d.onclick=()=>startScenario(s.id);
+    qg.appendChild(d);
+  });
+}
+
+function renderPicker(){
+  const el=document.getElementById('pickerContent');
+  el.innerHTML=CATEGORIES.map(cat=>{
+    const scens=SCENARIOS.filter(s=>s.cat===cat);
+    return `<div class="sp-category"><div class="sp-cat-name">${CAT_ICONS[cat]} ${cat}</div><div class="sp-grid">${scens.map(s=>`<div class="sp-card" onclick="startScenario(${s.id})"><div class="sp-num">Scenario ${s.id}</div><div class="sp-title">${s.title}</div><span class="sp-diff diff-${s.diff}">${s.diff}</span></div>`).join('')}</div></div>`;
+  }).join('');
+}
+
+function setCoachName(){
+  const name=document.getElementById('coachNameInput').value.trim();
+  if(!name){alert('Please enter your name');return;}
+  coachName=name;
+  document.getElementById('nameSetup').style.display='none';
+  document.getElementById('quickScenarios').style.display='grid';
+  document.getElementById('welcomeOr').style.display='block';
+}
+
+function showScreen(name){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById('screen-'+name).classList.add('active');
+  currentScreen=name;
+  if(name==='leaderboard')renderLeaderboard();
+  updateHeader(name);
+}
+
+function updateHeader(screen){
+  const label=document.getElementById('headerLabel');
+  const title=document.getElementById('headerTitle');
+  const actions=document.getElementById('headerActions');
+  if(screen==='chat'&&currentScenario){
+    label.textContent=currentScenario.cat+' · Scenario '+currentScenario.id;
+    title.textContent=currentScenario.title;
+    actions.innerHTML=`<span class="difficulty-badge diff-${currentScenario.diff}">${currentScenario.diff}</span><button class="btn-sm" onclick="showScreen('picker')">Change</button>`;
+  } else if(screen==='scorecard'){
+    label.textContent='Session Complete';title.textContent='Your Scorecard';
+    actions.innerHTML=`<button class="btn-sm btn-primary" onclick="showScreen('picker')">Next Scenario →</button>`;
+  } else if(screen==='leaderboard'){
+    label.textContent='Caissa Coach Simulator';title.textContent='Leaderboard';
+    actions.innerHTML=`<button class="btn-sm" onclick="showScreen('welcome')">Home</button>`;
+  } else if(screen==='picker'){
+    label.textContent='Caissa Coach Simulator';title.textContent='Choose a Scenario';
+    actions.innerHTML=`<button class="btn-sm" onclick="showScreen('welcome')">Home</button>`;
+  } else {
+    label.textContent='Caissa School of Chess';title.textContent='Select a scenario to begin';
+    actions.innerHTML=`<button class="btn-sm" onclick="showScreen('picker')">All Scenarios</button>`;
+  }
+}
+
+async function startScenario(id){
+  if(!coachName){alert('Please enter your name on the home screen first.');showScreen('welcome');return;}
+  currentScenario=SCENARIOS.find(s=>s.id===id);
+  messages=[];turnCount=0;
+  maxTurns=currentScenario.diff==='beginner'?2:currentScenario.diff==='intermediate'?3:4;
+  showScreen('chat');
+  document.getElementById('ctxRow').innerHTML=`<span class="ctx-item"><span class="ctx-label">Role:</span>${currentScenario.role==='parent'?'Parent':'Student'}</span><span class="ctx-item"><span class="ctx-label">Objective:</span>${currentScenario.obj}</span><span class="ctx-item"><span class="ctx-label">Exchanges:</span><span id="turnCounter">0/${maxTurns}</span></span>`;
+  document.getElementById('chatArea').innerHTML='';
+  document.getElementById('coachInput').value='';
+  document.getElementById('coachInput').disabled=false;
+  document.getElementById('sendBtn').disabled=false;
+  document.getElementById('inputHint').textContent=`Respond as a chess coach · ${maxTurns} exchanges then scored · Ctrl+Enter to send`;
+  addMsg('ai',OPENERS[id]||`[Scenario ${id} begins]`,currentScenario.role==='parent'?'Parent':'Student');
+}
+
+function addMsg(type,text,label){
+  const area=document.getElementById('chatArea');
+  const div=document.createElement('div');
+  div.className='msg '+type;
+  const initials=type==='ai'?(currentScenario?.role==='parent'?'PA':'ST'):'CO';
+  div.innerHTML=`<div class="msg-avatar avatar-${type}">${initials}</div><div><div class="msg-label">${label||''}</div><div class="msg-content">${text.replace(/\n/g,'<br>')}</div></div>`;
+  area.appendChild(div);
+  area.scrollTop=area.scrollHeight;
+}
+
+function addTyping(){
+  const area=document.getElementById('chatArea');
+  const div=document.createElement('div');
+  div.className='msg ai';div.id='typingIndicator';
+  div.innerHTML=`<div class="msg-avatar avatar-ai">${currentScenario?.role==='parent'?'PA':'ST'}</div><div class="msg-content"><div class="typing"><span></span><span></span><span></span></div></div>`;
+  area.appendChild(div);area.scrollTop=area.scrollHeight;
+}
+
+function removeTyping(){const t=document.getElementById('typingIndicator');if(t)t.remove();}
+function handleKey(e){if((e.ctrlKey||e.metaKey)&&e.key==='Enter')sendCoachMessage();}
+function autoResize(el){el.style.height='auto';el.style.height=Math.min(el.scrollHeight,120)+'px';}
+
+async function sendCoachMessage(){
+  if(isLoading)return;
+  const input=document.getElementById('coachInput');
+  const text=input.value.trim();
+  if(!text)return;
+  addMsg('user',text,coachName+' (Coach)');
+  messages.push({role:'coach',content:text});
+  input.value='';input.style.height='auto';
+  turnCount++;
+  document.getElementById('turnCounter').textContent=`${turnCount}/${maxTurns}`;
+  if(turnCount>=maxTurns){
+    document.getElementById('sendBtn').disabled=true;
+    document.getElementById('coachInput').disabled=true;
+    document.getElementById('inputHint').textContent='Session complete — evaluating your responses...';
+    addTyping();isLoading=true;
+    await evaluateSession();return;
+  }
+  addTyping();isLoading=true;document.getElementById('sendBtn').disabled=true;
+  try{
+    const reply=await callClaude({
+      system:`You are roleplaying as: ${currentScenario.persona}. Scenario: ${currentScenario.title}. Stay fully in character. React naturally — if coach handles well show improvement, if poorly escalate. Keep responses SHORT (1-4 sentences). Don't break character.`,
+      messages:[{role:'user',content:`Conversation so far:\n${messages.map(m=>m.role==='coach'?`Coach: ${m.content}`:`${currentScenario.role==='parent'?'Parent':'Student'}: ${m.content}`).join('\n')}\n\nContinue the roleplay. Respond as the ${currentScenario.role}.`}],
+      max_tokens:200
+    });
+    removeTyping();addMsg('ai',reply,currentScenario.role==='parent'?'Parent':'Student');
+    messages.push({role:'ai',content:reply});
+  }catch(e){removeTyping();addMsg('ai','[Connection issue — please try again]','System');}
+  isLoading=false;document.getElementById('sendBtn').disabled=false;
+}
+
+// ─── SECURE API CALL — goes through /api/claude proxy ───────────────────────
+async function callClaude({system,messages,max_tokens=1000}){
+  const response=await fetch('/api/claude',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({
+      model:'claude-sonnet-4-20250514',
+      max_tokens,
+      system,
+      messages
+    })
+  });
+  if(!response.ok){
+    const err=await response.json();
+    throw new Error(err.error?.message||'API error');
+  }
+  const data=await response.json();
+  return data.content?.[0]?.text||'';
+}
+
+async function evaluateSession(){
+  const s=currentScenario;
+  const transcript=messages.map(m=>m.role==='coach'?`COACH: ${m.content}`:`${s.role.toUpperCase()}: ${m.content}`).join('\n\n');
+  try{
+    const raw=await callClaude({
+      system:'You are an expert chess coaching evaluator for Caissa School of Chess. Return ONLY valid JSON, no markdown, no extra text.',
+      messages:[{role:'user',content:`Scenario: "${s.title}" | Category: ${s.cat} | Difficulty: ${s.diff} | Objective: ${s.obj}\n\nTranscript:\n${transcript}\n\nReturn ONLY this JSON:\n{"empathy":<0-10>,"communication":<0-10>,"teaching_skill":<0-10>,"retention_impact":<0-10>,"problem_solving":<0-10>,"professionalism":<0-10>,"csoc_alignment":<0-10>,"did_well":"<2-3 specific things the coach did well>","improve":"<2-3 specific things to improve>","ideal_response":"<what an expert coach would say in the opening response>"}`}],
+      max_tokens:800
+    });
+    const scores=JSON.parse(raw.replace(/```json|```/g,'').trim());
+    removeTyping();isLoading=false;
+    document.getElementById('coachInput').disabled=false;
+    showScorecard(scores);
+  }catch(e){
+    removeTyping();isLoading=false;
+    document.getElementById('coachInput').disabled=false;
+    addMsg('ai','Evaluation error — please try again.','System');
+  }
+}
+
+function showScorecard(scores){
+  const keys=['empathy','communication','teaching_skill','retention_impact','problem_solving','professionalism','csoc_alignment'];
+  const labels=['Empathy','Communication','Teaching Skill','Retention Impact','Problem Solving','Professionalism','CSOC Alignment'];
+  const avg=(keys.reduce((sum,k)=>sum+(scores[k]||0),0)/keys.length).toFixed(1);
+  const grade=avg>=8.5?'A':avg>=7?'B':avg>=5.5?'C':'D';
+  leaderboard.push({name:coachName,scenario:'Scenario '+currentScenario.id,avg:parseFloat(avg),grade,date:new Date().toLocaleDateString()});
+  leaderboard.sort((a,b)=>b.avg-a.avg);
+  saveLeaderboard();
+  document.getElementById('scorecardContent').innerHTML=`
+    <div class="score-header">
+      <div class="score-title">Session Complete</div>
+      <div class="score-sub">Scenario ${currentScenario.id}: ${currentScenario.cat}</div>
+      <div class="overall-score">${avg}<span style="font-size:20px;color:#888">/10</span></div>
+      <div class="score-grade grade-${grade}">Grade ${grade}</div>
+    </div>
+    <div class="metrics-grid">${keys.map((k,i)=>{const v=scores[k]||0;const bc=v>=7?'bar-high':v>=5?'bar-mid':'bar-low';return`<div class="metric-card"><div class="metric-name">${labels[i]}</div><div class="metric-bar-wrap"><div class="metric-bar ${bc}" style="width:${v*10}%"></div></div><div class="metric-score">${v}<span style="font-size:13px;color:#aaa">/10</span></div></div>`;}).join('')}</div>
+    <div class="feedback-section"><h3>✅ What you did well</h3><p>${scores.did_well||'Good effort on this scenario.'}</p></div>
+    <div class="feedback-section"><h3>⬆️ Areas to improve</h3><p>${scores.improve||'Continue practicing these scenarios.'}</p></div>
+    <div class="feedback-section"><h3>💡 Ideal response</h3><div class="ideal-response">${scores.ideal_response||''}</div></div>
+    <div style="display:flex;gap:8px;margin-top:1rem;padding-bottom:2rem">
+      <button class="btn-sm btn-primary" onclick="showScreen('picker')">Next Scenario →</button>
+      <button class="btn-sm" onclick="showScreen('leaderboard')">View Leaderboard</button>
+      <button class="btn-sm" onclick="startScenario(${currentScenario.id})">Replay This</button>
+    </div>`;
+  showScreen('scorecard');
+}
+
+function renderLeaderboard(){
+  const el=document.getElementById('lbContent');
+  if(!leaderboard.length){el.innerHTML='<div class="empty-lb">No scores yet. Complete a scenario to appear here.</div>';return;}
+  el.innerHTML=`<div style="margin-bottom:1rem"><div style="font-size:18px;font-weight:600">Leaderboard</div><div style="font-size:13px;color:#666;margin-top:4px">Top coaching performances</div></div>
+  <table class="lb-table"><thead><tr><th>#</th><th>Coach</th><th>Scenario</th><th>Grade</th><th style="text-align:right">Score</th></tr></thead>
+  <tbody>${leaderboard.slice(0,20).map((e,i)=>`<tr><td class="lb-rank">${i===0?'🥇':i===1?'🥈':i===2?'🥉':i+1}</td><td class="lb-name">${e.name}</td><td style="font-size:12px;color:#888">${e.scenario}</td><td><span class="score-grade grade-${e.grade}" style="font-size:11px;padding:2px 8px">${e.grade}</span></td><td class="lb-score">${e.avg}</td></tr>`).join('')}</tbody></table>`;
+}
+
+function saveLeaderboard(){try{localStorage.setItem('csoc_lb',JSON.stringify(leaderboard));}catch(e){}}
+function loadLeaderboard(){try{const d=localStorage.getItem('csoc_lb');if(d)leaderboard=JSON.parse(d);}catch(e){}}
+
+init();
+</script>
+</body>
+</html>
